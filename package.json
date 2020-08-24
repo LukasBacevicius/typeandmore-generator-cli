@@ -12,7 +12,8 @@
     "@oclif/plugin-help": "^3.2.0",
     "dom-to-image": "^2.6.0",
     "dotenv": "^8.2.0",
-    "puppeteer": "^5.2.1"
+    "puppeteer": "^5.2.1",
+    "query-string": "^6.13.1"
   },
   "devDependencies": {
     "@oclif/dev-cli": "^1.22.2",

@@ -1,10 +1,13 @@
-require("dotenv").config();
 const { Command, flags } = require("@oclif/command");
 const puppeteer = require("puppeteer");
 const fs = require("fs");
+const qs = require("query-string");
+const { APP_BASE } = require("../config");
 
 class GeneratePosterCommand extends Command {
   async generate(query, order) {
+    const parsedQuery = qs.parse(query);
+
     const browser = await puppeteer.launch({
       defaultViewport: null,
     });
@@ -13,10 +16,10 @@ class GeneratePosterCommand extends Command {
 
     await page.setViewport({
       width: 12000,
-      height: 12000,
+      height: 18000,
     });
 
-    await page.goto(`${process.env.APP_BASE}?${query}`, {
+    await page.goto(`${APP_BASE}?${query}`, {
       waitUntil: "networkidle2",
     });
 
@@ -43,6 +46,12 @@ class GeneratePosterCommand extends Command {
     await page.goto(SVG);
 
     async function screenshotDOMElement(selector, padding = 0) {
+      let incrementor = 0;
+      let targetFileName = `${order}/${Object.keys(parsedQuery)
+        .sort()
+        .map((key) => parsedQuery[key])
+        .join("_")}`;
+
       const rect = await page.evaluate((selector) => {
         const element = document.querySelector(selector);
         const { x, y, width, height } = element.getBoundingClientRect();
@@ -53,15 +62,26 @@ class GeneratePosterCommand extends Command {
         fs.mkdirSync(order);
       }
 
-      return await page.screenshot({
-        path: `${order}/poster_${order}.png`,
-        clip: {
-          x: rect.left - padding,
-          y: rect.top - padding,
-          width: rect.width + padding * 2,
-          height: rect.height + padding * 2,
-        },
-      });
+      const saveScreenshot = async () => {
+        if (fs.existsSync(`${targetFileName}.png`)) {
+          targetFileName = `${targetFileName}_${incrementor}`;
+          incrementor++;
+
+          return await saveScreenshot();
+        }
+
+        return await page.screenshot({
+          path: `${targetFileName}.png`,
+          clip: {
+            x: rect.left - padding,
+            y: rect.top - padding,
+            width: rect.width + padding * 2,
+            height: rect.height + padding * 2,
+          },
+        });
+      };
+
+      return await saveScreenshot();
     }
 
     await screenshotDOMElement("svg", 0);
@@ -78,7 +98,7 @@ class GeneratePosterCommand extends Command {
 
     await this.generate(query, order);
 
-    this.log(`Generated poster saved at ${order}/poster_${order}.png`);
+    this.log(`Generated poster saved`);
   }
 }
 
