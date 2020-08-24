@@ -2,6 +2,7 @@ const { Command, flags } = require("@oclif/command");
 const puppeteer = require("puppeteer");
 const fs = require("fs");
 const qs = require("query-string");
+const merge = require("merge-img");
 const { APP_BASE } = require("../config");
 
 class GeneratePosterCommand extends Command {
@@ -15,12 +16,12 @@ class GeneratePosterCommand extends Command {
     const page = await browser.newPage();
 
     await page.setViewport({
-      width: 12000,
-      height: 18000,
+      width: 18000,
+      height: 23000,
     });
 
     await page.goto(`${APP_BASE}?${query}`, {
-      waitUntil: "networkidle2",
+      waitUntil: "networkidle0",
     });
 
     await page.addStyleTag({
@@ -70,15 +71,34 @@ class GeneratePosterCommand extends Command {
           return await saveScreenshot();
         }
 
-        return await page.screenshot({
-          path: `${targetFileName}.png`,
-          clip: {
-            x: rect.left - padding,
-            y: rect.top - padding,
-            width: rect.width + padding * 2,
-            height: rect.height + padding * 2,
-          },
-        });
+        return Promise.all([
+          page.screenshot({
+            clip: {
+              x: rect.left,
+              y: rect.top,
+              height: rect.height,
+              width: Math.floor(rect.width / 3),
+            },
+          }),
+          page.screenshot({
+            clip: {
+              x: Math.floor(rect.width / 3),
+              y: rect.top,
+              height: rect.height,
+              width: Math.floor(rect.width / 3),
+            },
+          }),
+          page.screenshot({
+            clip: {
+              x: Math.floor((rect.width / 3) * 2),
+              y: rect.top,
+              height: rect.height,
+              width: Math.floor(rect.width / 3),
+            },
+          }),
+        ])
+          .then(merge)
+          .then((final) => final.write(`${targetFileName}.png`));
       };
 
       return await saveScreenshot();
